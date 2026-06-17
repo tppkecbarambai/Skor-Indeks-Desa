@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Status Kemajuan dan Kemandirian Desa - Kecamatan Barambai</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          primary: {
+            50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa',
+            500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a'
+          }
+        },
+        animation: {
+          'fade-in': 'fadeIn 0.5s ease-in-out',
+          'slide-up': 'slideUp 0.4s ease-out',
+          'pulse-slow': 'pulse 3s infinite'
+        },
+        keyframes: {
+          fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+          slideUp: { '0%': { transform: 'translateY(10px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } }
+        }
+      }
+    }
+  }
+</script>
+<style>
+  * { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+  .dark .glass {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .badge {
+    @apply px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1;
+  }
+  
+  .table-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+  .table-scroll::-webkit-scrollbar-track { @apply bg-slate-100 dark:bg-slate-800 rounded; }
+  .table-scroll::-webkit-scrollbar-thumb { @apply bg-slate-300 dark:bg-slate-600 rounded; }
+  
+  .sort-icon { opacity: 0.3; transition: all 0.2s; }
+  th:hover .sort-icon { opacity: 0.7; }
+  .sort-active { opacity: 1 !important; }
+</style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
+    <div class="glass rounded-2xl p-8 flex flex-col items-center gap-4 animate-fade-in">
+      <div class="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+      <p class="text-sm font-medium">Memuat data dari Google Sheet...</p>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="sticky top-0 z-40 glass shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-lg sm:text-xl font-bold leading-tight">IDM Kecamatan Barambai</h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Status Kemajuan & Kemandirian Desa</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 sm:gap-3">
+          <a href="https://tppkecamatanbarambai.blogspot.com/" target="_blank" rel="noopener" 
+             class="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white text-sm font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+            </svg>
+            <span class="hidden sm:inline">Branch TPP Barambai</span>
+            <span class="sm:hidden">TPP</span>
+          </a>
+          <button id="darkModeToggle" class="p-2.5 rounded-lg glass hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-all">
+            <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+            </svg>
+            <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+    <!-- Status Kecamatan Card -->
+    <section id="statusKecamatanSection" class="animate-slide-up">
+      <div class="glass rounded-2xl p-6 sm:p-8 shadow-xl border border-primary-100 dark:border-primary-900/50">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <p class="text-sm font-medium text-primary-600 dark:text-primary-400 uppercase tracking-wide">Status Kecamatan</p>
+            <h2 id="statusKecamatan" class="text-3xl sm:text-4xl font-extrabold mt-1"></h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">Tahun <span id="tahunKecamatan"></span></p>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="text-right">
+              <p class="text-sm text-slate-500 dark:text-slate-400">Skor Rata-rata</p>
+              <p id="skorKecamatan" class="text-2xl font-bold"></p>
+            </div>
+            <div class="w-20 h-20 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg">
+              <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Filters -->
+    <section class="glass rounded-2xl p-4 sm:p-6 shadow-lg animate-slide-up">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-2">Tahun</label>
+          <select id="filterTahun" class="w-full px-4 py-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all">
+            <option value="all">Semua Tahun</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Desa</label>
+          <select id="filterDesa" class="w-full px-4 py-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all">
+            <option value="all">Semua Desa</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Status Desa</label>
+          <select id="filterStatus" class="w-full px-4 py-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all">
+            <option value="all">Semua Status</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button id="resetFilter" class="w-full px-4 py-2.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-sm font-medium transition-all">
+            Reset Filter
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Charts -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up">
+      <div class="glass rounded-2xl p-4 sm:p-6 shadow-lg">
+        <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+          Skor per Desa
+        </h3>
+        <div class="relative h-72">
+          <canvas id="barChart"></canvas>
+        </div>
+      <div class="glass rounded-2xl p-4 sm:p-6 shadow-lg">
+        <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+          </svg>
+          Tren Skor Tahunan
+        </h3>
+        <div class="relative h-72">
+          <canvas id="lineChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Table -->
+    <section class="glass rounded-2xl shadow-lg overflow-hidden animate-slide-up">
+      <div class="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h3 class="font-bold text-lg">Data Detail Desa</h3>
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-slate-500 dark:text-slate-400">Total: <span id="totalData" class="font-semibold">0</span> data</span>
+            <button id="exportCSV" class="px-3 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium transition-all flex items-center gap-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              Export
+            </button>
+          </div>
+        </div>
+      <div class="overflow-x-auto table-scroll">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-100 dark:bg-slate-800/50">
+            <tr class="border-b border-slate-200 dark:border-slate-700">
+              <th class="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors" data-sort="Tahun">
+                <div class="flex items-center gap-1">Tahun <span class="sort-icon">⇅</span></div>
+              </th>
+              <th class="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors" data-sort="Desa">
+                <div class="flex items-center gap-1">Desa <span class="sort-icon">⇅</span></div>
+              </th>
+              <th class="px-4 py-3 text-center font-semibold cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors" data-sort="Dimensi Layanan Dasar">
+                <div class="flex items-center justify-center gap-1">Layanan Dasar <span class="sort-icon">⇅</span></div>
+              </th>
+              <th class="px-4 py-3 text-center font-semibold cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors" data-sort="Dimensi Sosial">
+                <div class="flex items-center justify-center gap-1">Sosial <span class="sort-icon">⇅</span></div>
+              </th>
+              <th class="px-4 py-3 text-center font-semibold cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors" data-sort="Dimensi Ekonomi">
+                <div class="flex items-center justify-center gap-1">Ekonomi <span class="sort-icon">⇅</span></div>
+              </th>
+              <th class="px-4 py-3 text-center font-semibold cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors" data-sort="Dimensi Lingkungan">
+                <div class="flex items-center justify-center gap-1">Lingkungan <span class="sort-icon">⇅</span></div>
+              </th>
+              <th class="px-4 py-3 text-center font-semibold cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors" data-sort="Dimensi Aksesibilitas">
+                <div class="flex items-center justify-center gap-1">Aksesibilitas <span class="sort-icon">⇅</span></div>
+              </th>
+              <th class="px-4 py-3 text-center font-semibold cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors" data-sort="Dimensi Tata Kelola Pemerintahan Desa">
+                <div class="flex items-center justify-center gap-1">Tata Kelola <span class="sort-icon">⇅</span></div>
+              </th>
+              <th class="px-4 py-3 text-center font-semibold cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors" data-sort="Skor">
+                <div class="flex items-center justify-center gap-1">Skor <span class="sort-icon">⇅</span></div>
+              </th>
+              <th class="px-4 py-3 text-center font-semibold">Status Desa</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-200 dark:divide-slate-700">
+          </tbody>
+        </table>
+      </div>
+      <div id="emptyState" class="hidden p-12 text-center">
+        <svg class="w-16 h-16 mx-auto text-slate-300 dark:text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <p class="mt-4 text-slate-500 dark:text-slate-400">Tidak ada data yang cocok dengan filter</p>
+      </div>
+    </section>
+
+    <!-- Error State -->
+    <div id="errorState" class="hidden glass rounded-2xl p-8 text-center shadow-lg">
+      <svg class="w-16 h-16 mx-auto text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      <h3 class="mt-4 text-xl font-bold">Gagal Memuat Data</h3>
+      <p class="mt-2 text-slate-500 dark:text-slate-400">Tidak dapat mengambil data dari Google Sheet. Pastikan URL CSV valid dan dapat diakses publik.</p>
+      <button id="retryBtn" class="mt-6 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-all">Coba Lagi</button>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="mt-12 border-t border-slate-200 dark:border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500 dark:text-slate-400">
+        <p>© 2025 Kecamatan Barambai. Sumber data: <span class="font-medium">Berdasarkan Kepmendes PDT Nomor 343 Tahun 2025 Tentang Status Kemajuan dan Kemandirian Desa</span></p>
+        <p>Data auto-update dari Google Sheet</p>
+      </div>
+    </div>
+  </footer>
+
+<script>
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQE4GuzYB6Utfx1y5uhj0weOXKmJxiKAF5M3cM5ITHP89vnesPe5pelAhkKSLzeSQ/pub?gid=5611662&single=true&output=csv';
+const DESA_LIST = ['Barambai', 'Sungai Kali', 'Pendalaman', 'Handil Barabai', 'Bagagap', 'Barambai Karya Tani', 'Pendalaman Baru', 'Karya Baru', 'Barambai Kolam Kiri', 'Barambai Kolam Kanan', 'Barambai Kolam Kiri Dalam'];
+
+let allData = [];
+let filteredData = [];
+let barChart, lineChart;
+let currentSort = { key: null, asc: true };
+
+// Dark Mode
+const darkModeToggle = document.getElementById('darkModeToggle');
+const html = document.documentElement;
+
+if (localStorage.getItem('darkMode') === 'true' || (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+  html.classList.add('dark');
+}
+
+darkModeToggle.addEventListener('click', () => {
+  html.classList.toggle('dark');
+  localStorage.setItem('darkMode', html.classList.contains('dark'));
+  updateCharts();
+});
+
+// Status Badge Color
+function getStatusBadge(status) {
+  const s = status?.toLowerCase().trim();
+  const colors = {
+    'mandiri': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+    'maju': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    'berkembang': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+    'tertinggal': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+    'sangat tertinggal': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+  };
+  return colors[s] || 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400';
+}
+
+// Parse CSV
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim());
+  return lines.slice(1).map(line => {
+    const values = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g) || [];
+    const obj = {};
+    headers.forEach((h, i) => {
+      obj[h] = values[i]?.replace(/^"|"$/g, '').trim() || '';
+    });
+    return obj;
+  });
+}
+
+// Load Data
+async function loadData() {
+  try {
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+    document.getElementById('errorState').classList.add('hidden');
+    
+    const response = await fetch(CSV_URL + '&_=' + Date.now());
+    if (!response.ok) throw new Error('Network error');
+    
+    const text = await response.text();
+    allData = parseCSV(text);
+    
+    if (allData.length === 0) throw new Error('No data');
+    
+    initFilters();
+    applyFilters();
+    updateStatusKecamatan();
+    
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  } catch (error) {
+    console.error('Error loading data:', error);
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    document.getElementById('errorState').classList.remove('hidden');
+  }
+}
+
+// Init Filters
+function initFilters() {
+  const tahunSet = [...new Set(allData.map(d => d.Tahun))].sort().reverse();
+  const tahunSelect = document.getElementById('filterTahun');
+  tahunSelect.innerHTML = '<option value="all">Semua Tahun</option>';
+  tahunSet.forEach(t => {
+    tahunSelect.innerHTML += `<option value="${t}">${t}</option>`;
+  });
+
+  const desaSelect = document.getElementById('filterDesa');
+  desaSelect.innerHTML = '<option value="all">Semua Desa</option>';
+  DESA_LIST.forEach(d => {
+    desaSelect.innerHTML += `<option value="${d}">${d}</option>`;
+  });
+
+  const statusSet = [...new Set(allData.map(d => d['Status Desa']))].filter(Boolean);
+  const statusSelect = document.getElementById('filterStatus');
+  statusSelect.innerHTML = '<option value="all">Semua Status</option>';
+  statusSet.forEach(s => {
+    statusSelect.innerHTML += `<option value="${s}">${s}</option>`;
+  });
+}
+
+// Apply Filters
+function applyFilters() {
+  const tahun = document.getElementById('filterTahun').value;
+  const desa = document.getElementById('filterDesa').value;
+  const status = document.getElementById('filterStatus').value;
+
+  filteredData = allData.filter(d => {
+    return (tahun === 'all' || d.Tahun === tahun) &&
+           (desa === 'all' || d.Desa === desa) &&
+           (status === 'all' || d['Status Desa'] === status);
+  });
+
+  renderTable();
+  updateCharts();
+  updateStatusKecamatan();
+}
+
+// Update Status Kecamatan
+function updateStatusKecamatan() {
+  const tahun = document.getElementById('filterTahun').value;
+  const dataToUse = tahun === 'all' ? allData : allData.filter(d => d.Tahun === tahun);
+  
+  if (dataToUse.length === 0) return;
+  
+  const latestTahun = tahun === 'all' ? Math.max(...dataToUse.map(d => parseInt(d.Tahun))) : tahun;
+  const dataKec = dataToUse.find(d => d.Tahun == latestTahun);
+  
+  if (dataKec) {
+    document.getElementById('statusKecamatan').textContent = dataKec['Status Kecamatan'] || '-';
+    document.getElementById('tahunKecamatan').textContent = latestTahun;
+    const avgSkor = dataToUse
+      .filter(d => d.Tahun == latestTahun)
+      .reduce((sum, d) => sum + parseFloat(d.Skor || 0), 0) / dataToUse.filter(d => d.Tahun == latestTahun).length;
+    document.getElementById('skorKecamatan').textContent = avgSkor.toFixed(2);
+  }
+}
+
+// Render Table
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  const emptyState = document.getElementById('emptyState');
+  
+  if (filteredData.length === 0) {
+    tbody.innerHTML = '';
+    emptyState.classList.remove('hidden');
+    document.getElementById('totalData').textContent = '0';
+    return;
+  }
+  
+  emptyState.classList.add('hidden');
+  document.getElementById('totalData').textContent = filteredData.length;
+  
+  tbody.innerHTML = filteredData.map(d => `
+    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+      <td class="px-4 py-3 font-medium">${d.Tahun}</td>
+      <td class="px-4 py-3 font-medium">${d.Desa}</td>
+      <td class="px-4 py-3 text-center">${d['Dimensi Layanan Dasar'] || '-'}</td>
+      <td class="px-4 py-3 text-center">${d['Dimensi Sosial'] || '-'}</td>
+      <td class="px-4 py-3 text-center">${d['Dimensi Ekonomi'] || '-'}</td>
+      <td class="px-4 py-3 text-center">${d['Dimensi Lingkungan'] || '-'}</td>
+      <td class="px-4 py-3 text-center">${d['Dimensi Aksesibilitas'] || '-'}</td>
+      <td class="px-4 py-3 text-center">${d['Dimensi Tata Kelola Pemerintahan Desa'] || '-'}</td>
+      <td class="px-4 py-3 text-center font-bold text-primary-600 dark:text-primary-400">${parseFloat(d.Skor || 0).toFixed(2)}</td>
+      <td class="px-4 py-3 text-center">
+        <span class="badge ${getStatusBadge(d['Status Desa'])}">${d['Status Desa'] || '-'}</span>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// Update Charts
+function updateCharts() {
+  const isDark = html.classList.contains('dark');
+  const textColor = isDark ? '#cbd5e1' : '#475569';
+  const gridColor = isDark ? '#334155' : '#e2e8f0';
+  
+  Chart.defaults.color = textColor;
+  Chart.defaults.borderColor = gridColor;
+  
+  // Bar Chart - Skor per Desa
+  const tahunFilter = document.getElementById('filterTahun').value;
+  const barData = tahunFilter === 'all' 
+    ? allData.filter(d => d.Tahun == Math.max(...allData.map(x => parseInt(x.Tahun))))
+    : filteredData;
+    
+  const desaSkor = {};
+  barData.forEach(d => {
+    if (!desaSkor[d.Desa]) desaSkor[d.Desa] = [];
+    desaSkor[d.Desa].push(parseFloat(d.Skor || 0));
+  });
+  
+  const barLabels = Object.keys(desaSkor);
+  const barValues = barLabels.map(d => {
+    const avg = desaSkor[d].reduce((a, b) => a + b, 0) / desaSkor[d].length;
+    return avg.toFixed(2);
+  });
+  
+  if (barChart) barChart.destroy();
+  barChart = new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: barLabels,
+      datasets: [{
+        label: 'Skor IDM',
+        data: barValues,
+        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+        borderColor: 'rgba(37, 99, 235, 1)',
+        borderWidth: 2,
+        borderRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: isDark ? '#1e293b' : '#fff',
+          titleColor: textColor,
+          bodyColor: textColor,
+          borderColor: gridColor,
+          borderWidth: 1,
+          padding: 12,
+          displayColors: false,
+          callbacks: {
+            label: ctx => `Skor: ${ctx.parsed.y}`
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: gridColor },
+          ticks: { color: textColor }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { 
+            color: textColor,
+            maxRotation: 45,
+            minRotation: 45
+          }
+        }
+      }
+    }
+  });
+  
+  // Line Chart - Tren Tahunan
+  const tahunGroups = {};
+  allData.forEach(d => {
+    if (!tahunGroups[d.Tahun]) tahunGroups[d.Tahun] = [];
+    tahunGroups[d.Tahun].push(parseFloat(d.Skor || 0));
+  });
+  
+  const lineLabels = Object.keys(tahunGroups).sort();
+  const lineValues = lineLabels.map(t => {
+    const avg = tahunGroups[t].reduce((a, b) => a + b, 0) / tahunGroups[t].length;
+    return avg.toFixed(2);
+  });
+  
+  if (lineChart) lineChart.destroy();
+  lineChart = new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: {
+      labels: lineLabels,
+      datasets: [{
+        label: 'Rata-rata Skor Kecamatan',
+        data: lineValues,
+        borderColor: 'rgba(59, 130, 246, 1)',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 5,
+        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointHoverRadius: 7
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: isDark ? '#1e293b' : '#fff',
+          titleColor: textColor,
+          bodyColor: textColor,
+          borderColor: gridColor,
+          borderWidth: 1,
+          padding: 12,
+          displayColors: false
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: false,
+          grid: { color: gridColor },
+          ticks: { color: textColor }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { color: textColor }
+        }
+      }
+    }
+  });
+}
+
+// Sorting
+document.querySelectorAll('th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.sort;
+    currentSort.asc = currentSort.key === key ? !currentSort.asc : true;
+    currentSort.key = key;
+    
+    document.querySelectorAll('.sort-icon').forEach(icon => icon.classList.remove('sort-active'));
+    th.querySelector('.sort-icon').classList.add('sort-active');
+    
+    filteredData.sort((a, b) => {
+      let valA = a[key], valB = b[key];
+      if (key === 'Skor' || key.includes('Dimensi')) {
+        valA = parseFloat(valA) || 0;
+        valB = parseFloat(valB) || 0;
+      }
+      if (valA < valB) return currentSort.asc ? -1 : 1;
+      if (valA > valB) return currentSort.asc ? 1 : -1;
+      return 0;
+    });
+    
+    renderTable();
+  });
+});
+
+// Export CSV
+document.getElementById('exportCSV').addEventListener('click', () => {
+  if (filteredData.length === 0) return;
+  
+  const headers = Object.keys(filteredData[0]);
+  const csv = [
+    headers.join(','),
+    ...filteredData.map(row => headers.map(h => `"${row[h]}"`).join(','))
+  ].join('\n');
+  
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `idm-barambai-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// Event Listeners
+document.getElementById('filterTahun').addEventListener('change', applyFilters);
+document.getElementById('filterDesa').addEventListener('change', applyFilters);
+document.getElementById('filterStatus').addEventListener('change', applyFilters);
+document.getElementById('resetFilter').addEventListener('click', () => {
+  document.getElementById('filterTahun').value = 'all';
+  document.getElementById('filterDesa').value = 'all';
+  document.getElementById('filterStatus').value = 'all';
+  applyFilters();
+});
+document.getElementById('retryBtn').addEventListener('click', loadData);
+
+// Init
+loadData();
+</script>
+<script>(function(){document.addEventListener("click",function(e){var a=e.target.closest("[data-product-id]");if(!a)return;e.preventDefault();var pid=a.getAttribute("data-product-id");if(pid)parent.postMessage({type:"ecto-artifact-link-click",productId:pid},"*")})})();</script>
+</body>
+</html>
