@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skor Indeks Desa se-Kecamatan Barambai</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .gradient-bg {
+        background: linear-gradient(135deg, #0f766e 0%, #059669 50%, #10b981 100%);
+    }
+    .card-hover {
+        transition: all 0.3s ease;
+    }
+    .card-hover:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    }
+    .status-mandiri { background: linear-gradient(135deg, #059669, #10b981); }
+    .status-maju { background: linear-gradient(135deg, #2563eb, #3b82f6); }
+    .status-berkembang { background: linear-gradient(135deg, #d97706, #f59e0b); }
+    .status-tertinggal { background: linear-gradient(135deg, #dc2626, #ef4444); }
+    .status-lain { background: linear-gradient(135deg, #64748b, #94a3b8); }
+    
+    .card-border-mandiri { border-left: 5px solid #059669; }
+    .card-border-maju { border-left: 5px solid #2563eb; }
+    .card-border-berkembang { border-left: 5px solid #d97706; }
+    .card-border-lain { border-left: 5px solid #64748b; }
+    
+    .loading-shimmer {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+    @media (min-width: 768px) {
+        .chart-container { height: 400px; }
+    }
+    select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 0.5rem center;
+        background-repeat: no-repeat;
+        background-size: 1.5em 1.5em;
+    }
+    .modal-backdrop {
+        backdrop-filter: blur(4px);
+        animation: fadeIn 0.2s ease;
+    }
+    .modal-content {
+        animation: slideUp 0.3s ease;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+</style>
+</head>
+<body class="bg-slate-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
+                        <i class="fa-solid fa-chart-line text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl md:text-2xl lg:text-3xl font-bold">Skor Indeks Desa</h1>
+                        <p class="text-sm md:text-base text-emerald-100 mt-1">Kecamatan Barambai, Kabupaten Barito Kuala</p>
+                    </div>
+                </div>
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <div id="statusKecamatanBadge" class="hidden bg-white/20 backdrop-blur-sm px-5 py-3 rounded-lg text-center">
+                        <p class="text-xs text-emerald-100 font-medium">STATUS KECAMATAN <span id="badgeTahun"></span></p>
+                        <p id="badgeStatusKecamatan" class="text-lg md:text-xl font-bold text-white mt-0.5"></p>
+                    </div>
+                    <a href="https://tppkecamatanbarambai.blogspot.com/" target="_blank" 
+                       class="inline-flex items-center justify-center gap-2 bg-white text-emerald-700 px-5 py-3 rounded-lg font-semibold hover:bg-emerald-50 transition-all shadow-md hover:shadow-lg text-sm md:text-base">
+                        <i class="fa-solid fa-globe"></i>
+                        Website Kecamatan
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+        <!-- Loading State -->
+        <div id="loadingState" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="loading-shimmer h-28 rounded-xl"></div>
+                <div class="loading-shimmer h-28 rounded-xl"></div>
+                <div class="loading-shimmer h-28 rounded-xl"></div>
+                <div class="loading-shimmer h-28 rounded-xl"></div>
+            </div>
+            <div class="loading-shimmer h-96 rounded-xl"></div>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="hidden">
+            <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+                <i class="fa-solid fa-circle-exclamation text-red-500 text-4xl mb-3"></i>
+                <h3 class="text-lg font-semibold text-red-800 mb-2">Gagal Memuat Data</h3>
+                <p class="text-red-600 mb-4">Tidak dapat mengambil data dari Google Sheets. Periksa koneksi internet Anda.</p>
+                <button onclick="loadData()" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition">
+                    <i class="fa-solid fa-rotate-right mr-2"></i>Coba Lagi
+                </button>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div id="mainContent" class="hidden space-y-6 md:space-y-8">
+            <!-- Status Statistik Desa -->
+            <section>
+                <h2 class="text-lg md:text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-map text-emerald-600"></i>
+                    Ringkasan Desa Tahun <span id="statusTahun" class="text-emerald-600"></span>
+                </h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-slate-500 text-sm font-medium">Total Desa</p>
+                                <p id="totalDesa" class="text-3xl font-bold text-slate-800 mt-1">0</p>
+                            </div>
+                            <div class="bg-slate-100 p-3 rounded-lg">
+                                <i class="fa-solid fa-building-columns text-2xl text-slate-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-slate-500 text-sm font-medium">Desa Mandiri</p>
+                                <p id="countMandiri" class="text-3xl font-bold text-emerald-600 mt-1">0</p>
+                            </div>
+                            <div class="status-mandiri p-3 rounded-lg text-white">
+                                <i class="fa-solid fa-star text-2xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-slate-500 text-sm font-medium">Desa Maju</p>
+                                <p id="countMaju" class="text-3xl font-bold text-blue-600 mt-1">0</p>
+                            </div>
+                            <div class="status-maju p-3 rounded-lg text-white">
+                                <i class="fa-solid fa-arrow-trend-up text-2xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-slate-500 text-sm font-medium">Desa Berkembang</p>
+                                <p id="countBerkembang" class="text-3xl font-bold text-amber-600 mt-1">0</p>
+                            </div>
+                            <div class="status-berkembang p-3 rounded-lg text-white">
+                                <i class="fa-solid fa-seedling text-2xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Filter -->
+            <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-6">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">
+                            <i class="fa-solid fa-calendar text-emerald-600 mr-1"></i> Filter Tahun
+                        </label>
+                        <select id="filterTahun" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-white">
+                        </select>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">
+                            <i class="fa-solid fa-location-dot text-emerald-600 mr-1"></i> Filter Desa
+                        </label>
+                        <select id="filterDesa" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-white">
+                            <option value="all">Semua Desa</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts -->
+            <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-6">
+                    <h3 class="text-base md:text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-bar text-emerald-600"></i>
+                        Grafik Skor Indeks Desa
+                    </h3>
+                    <div class="chart-container">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-6">
+                    <h3 class="text-base md:text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-radar text-emerald-600"></i>
+                        Radar 6 Dimensi IDM
+                    </h3>
+                    <div class="chart-container">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-3 text-center">
+                        <i class="fa-solid fa-circle-info mr-1"></i>Pilih desa untuk melihat detail dimensi
+                    </p>
+                </div>
+            </section>
+
+            <!-- Card Grid Section -->
+            <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+                    <h3 class="text-base md:text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-address-card text-emerald-600"></i>
+                        Data Lengkap Skor Indeks Desa
+                    </h3>
+                    <div class="relative w-full sm:w-72">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input type="text" id="searchDesa" placeholder="Cari nama desa..." 
+                            class="w-full pl-9 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm">
+                    </div>
+                </div>
+                
+                <div id="cardGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                </div>
+                
+                <div id="emptyState" class="hidden text-center py-12">
+                    <i class="fa-solid fa-inbox text-4xl text-slate-300 mb-3"></i>
+                    <p class="text-slate-500">Tidak ada data untuk filter yang dipilih</p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modal Detail Desa -->
+    <div id="detailModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+        <div class="modal-backdrop fixed inset-0 bg-black/50" onclick="closeModal()"></div>
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div class="modal-content relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+                <div id="modalHeader" class="p-5 md:p-6 text-white">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex-1">
+                            <h3 id="modalDesaName" class="text-xl md:text-2xl font-bold mb-1"></h3>
+                            <div class="flex items-center gap-3 flex-wrap mt-2">
+                                <span id="modalStatusBadge" class="inline-flex px-3 py-1 rounded-full text-xs font-bold bg-white/20 backdrop-blur-sm"></span>
+                                <span id="modalTahun" class="text-sm opacity-90"></span>
+                            </div>
+                        </div>
+                        <button onclick="closeModal()" class="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition">
+                            <i class="fa-solid fa-xmark text-xl"></i>
+                        </button>
+                    </div>
+                    <div class="mt-4 bg-white/20 backdrop-blur-sm rounded-xl p-4">
+                        <p class="text-sm opacity-90 mb-1">Skor Indeks Desa Membangun</p>
+                        <p id="modalSkor" class="text-4xl md:text-5xl font-extrabold"></p>
+                    </div>
+                </div>
+                <div class="p-5 md:p-6 overflow-y-auto max-h-[calc(90vh-280px)]">
+                    <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-emerald-600"></i>
+                        Rincian 6 Dimensi IDM
+                    </h4>
+                    <div id="modalDimensi" class="space-y-3">
+                    </div>
+                <div class="p-4 md:p-5 bg-slate-50 border-t border-slate-200">
+                    <button onclick="closeModal()" class="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl font-semibold transition">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-800 text-slate-300 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+                <div>
+                    <h4 class="text-white font-semibold mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-info"></i> Sumber Data
+                    </h4>
+                    <p>Kepmendes PDT Nomor 343 Tahun 2025 Tentang Status Kemajuan dan Kemandirian Desa</p>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-building"></i> Kecamatan Barambai
+                    </h4>
+                    <p>Kabupaten Barito Kuala, Provinsi Kalimantan Selatan</p>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-clock"></i> Update Otomatis
+                    </h4>
+                    <p>Data diambil langsung dari Google Sheets dan akan update otomatis saat sheet diperbarui</p>
+                </div>
+            </div>
+            <div class="border-t border-slate-700 mt-6 pt-6 text-center text-xs text-slate-400">
+                <p>&copy; 2025 Kecamatan Barambai. Dibangun untuk transparansi data pembangunan desa.</p>
+            </div>
+        </div>
+    </footer>
+
+<script>
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQE4GuzYB6Utfx1y5uhj0weOXKmJxiKAF5M3cM5ITHP89vnesPe5pelAhkKSLzeSQ/pub?gid=5611662&single=true&output=csv';
+const CACHE_KEY = 'idm_barambai_cache_v3';
+const CACHE_DURATION = 30 * 60 * 1000;
+
+const RADAR_NORMALIZED_MAX = 200;
+
+let allData = [];
+let barChart, radarChart;
+let currentYearData = [];
+let selectedDesaData = null;
+
+const getStatusColor = (status) => {
+    const s = status?.toLowerCase().trim();
+    if (s === 'mandiri') return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+    if (s === 'maju') return 'bg-blue-100 text-blue-800 border-blue-300';
+    if (s === 'berkembang') return 'bg-amber-100 text-amber-800 border-amber-300';
+    return 'bg-slate-100 text-slate-800 border-slate-300';
+};
+
+const getStatusGradient = (status) => {
+    const s = status?.toLowerCase().trim();
+    if (s === 'mandiri') return 'status-mandiri';
+    if (s === 'maju') return 'status-maju';
+    if (s === 'berkembang') return 'status-berkembang';
+    return 'status-lain';
+};
+
+const getCardBorder = (status) => {
+    const s = status?.toLowerCase().trim();
+    if (s === 'mandiri') return 'card-border-mandiri';
+    if (s === 'maju') return 'card-border-maju';
+    if (s === 'berkembang') return 'card-border-berkembang';
+    return 'card-border-lain';
+};
+
+const getChartColor = (status) => {
+    const s = status?.toLowerCase().trim();
+    if (s === 'mandiri') return '#059669';
+    if (s === 'maju') return '#2563eb';
+    if (s === 'berkembang') return '#d97706';
+    return '#64748b';
+};
+
+const getStatusIcon = (status) => {
+    const s = status?.toLowerCase().trim();
+    if (s === 'mandiri') return 'fa-star';
+    if (s === 'maju') return 'fa-arrow-trend-up';
+    if (s === 'berkembang') return 'fa-seedling';
+    return 'fa-circle';
+};
+
+const getStatusPriority = (status) => {
+    const s = status?.toLowerCase().trim();
+    if (s === 'mandiri') return 0;
+    if (s === 'maju') return 1;
+    if (s === 'berkembang') return 2;
+    return 3;
+};
+
+async function loadData() {
+    document.getElementById('loadingState').classList.remove('hidden');
+    document.getElementById('errorState').classList.add('hidden');
+    document.getElementById('mainContent').classList.add('hidden');
+
+    try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+            const { data, timestamp } = JSON.parse(cached);
+            if (Date.now() - timestamp < CACHE_DURATION) {
+                allData = data;
+                renderApp();
+                fetchFreshData();
+                return;
+            }
+        }
+        await fetchFreshData();
+    } catch (error) {
+        console.error('Load data error:', error);
+        showError();
+    }
+}
+
+async function fetchFreshData() {
+    try {
+        const response = await fetch(CSV_URL);
+        if (!response.ok) throw new Error('Network response was not ok');
+        
+        const csvText = await response.text();
+        Papa.parse(csvText, {
+            header: true,
+            skipEmptyLines: true,
+            dynamicTyping: false,
+            complete: (results) => {
+                allData = results.data.filter(row => row.Tahun && row.Desa);
+                localStorage.setItem(CACHE_KEY, JSON.stringify({
+                    data: allData,
+                    timestamp: Date.now()
+                }));
+                renderApp();
+            },
+            error: () => showError()
+        });
+    } catch (error) {
+        if (allData.length === 0) showError();
+    }
+}
+
+function showError() {
+    document.getElementById('loadingState').classList.add('hidden');
+    document.getElementById('errorState').classList.remove('hidden');
+}
+
+function renderApp() {
+    document.getElementById('loadingState').classList.add('hidden');
+    document.getElementById('errorState').classList.add('hidden');
+    document.getElementById('mainContent').classList.remove('hidden');
+    
+    populateFilters();
+    updateDashboard();
+}
+
+function populateFilters() {
+    const tahunSet = [...new Set(allData.map(d => d.Tahun))].sort((a, b) => b - a);
+    const tahunSelect = document.getElementById('filterTahun');
+    tahunSelect.innerHTML = tahunSet.map(t => `<option value="${t}">${t}</option>`).join('');
+    
+    const desaSelect = document.getElementById('filterDesa');
+    const desaInData = [...new Set(allData.map(d => d.Desa))].sort();
+    desaSelect.innerHTML = '<option value="all">Semua Desa</option>' + 
+        desaInData.map(d => `<option value="${d}">${d}</option>`).join('');
+    
+    tahunSelect.addEventListener('change', updateDashboard);
+    desaSelect.addEventListener('change', updateDashboard);
+    document.getElementById('searchDesa').addEventListener('input', updateCardGrid);
+}
+
+function updateDashboard() {
+    const selectedTahun = document.getElementById('filterTahun').value;
+    const selectedDesa = document.getElementById('filterDesa').value;
+    
+    let filteredData = allData.filter(d => String(d.Tahun) === String(selectedTahun));
+    const statsData = [...filteredData];
+    
+    if (selectedDesa !== 'all') {
+        filteredData = filteredData.filter(d => d.Desa === selectedDesa);
+        selectedDesaData = filteredData.length > 0 ? filteredData[0] : null;
+    } else {
+        selectedDesaData = null;
+    }
+    
+    currentYearData = statsData;
+    
+    updateStatusKecamatan(statsData, selectedTahun);
+    updateStats(statsData, selectedTahun);
+    updateCardGrid();
+    updateBarChart(statsData);
+    updateRadarChart(filteredData, selectedDesa);
+}
+
+function updateStatusKecamatan(data, tahun) {
+    const badge = document.getElementById('statusKecamatanBadge');
+    const badgeStatus = document.getElementById('badgeStatusKecamatan');
+    const badgeTahun = document.getElementById('badgeTahun');
+    
+    if (data.length > 0 && data[0]['Status Kecamatan']) {
+        badge.classList.remove('hidden');
+        badgeStatus.textContent = data[0]['Status Kecamatan'].toUpperCase();
+        badgeTahun.textContent = tahun;
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+function updateStats(data, tahun) {
+    document.getElementById('statusTahun').textContent = tahun;
+    document.getElementById('totalDesa').textContent = data.length;
+    
+    const countMandiri = data.filter(d => d['Status Desa']?.toLowerCase() === 'mandiri').length;
+    const countMaju = data.filter(d => d['Status Desa']?.toLowerCase() === 'maju').length;
+    const countBerkembang = data.filter(d => d['Status Desa']?.toLowerCase() === 'berkembang').length;
+    
+    document.getElementById('countMandiri').textContent = countMandiri;
+    document.getElementById('countMaju').textContent = countMaju;
+    document.getElementById('countBerkembang').textContent = countBerkembang;
+}
+
+function formatSkor(value) {
+    if (!value) return '-';
+    return String(value).trim();
+}
+
+function parseNum(v) {
+    return parseFloat(String(v || 0).replace(',', '.'));
+}
+
+function updateCardGrid() {
+    const searchTerm = document.getElementById('searchDesa').value.toLowerCase().trim();
+    const grid = document.getElementById('cardGrid');
+    const emptyState = document.getElementById('emptyState');
+    
+    let data = [...currentYearData];
+    
+    // Filter by search
+    if (searchTerm) {
+        data = data.filter(d => d.Desa.toLowerCase().includes(searchTerm));
+    }
+    
+    // Sort: Status priority then Skor descending
+    data.sort((a, b) => {
+        const priorityA = getStatusPriority(a['Status Desa']);
+        const priorityB = getStatusPriority(b['Status Desa']);
+        if (priorityA !== priorityB) return priorityA - priorityB;
+        return parseNum(b.Skor) - parseNum(a.Skor);
+    });
+    
+    if (data.length === 0) {
+        grid.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+    }
+    
+    emptyState.classList.add('hidden');
+    
+    grid.innerHTML = data.map((row, idx) => `
+        <div onclick="showDetail(${idx})" 
+             class="bg-white rounded-xl shadow-sm border border-slate-200 ${getCardBorder(row['Status Desa'])} p-5 card-hover cursor-pointer transition-all">
+            <div class="flex items-start justify-between mb-3">
+                <div class="flex-1 min-w-0">
+                    <h4 class="font-bold text-slate-900 text-lg mb-2 truncate">${row.Desa}</h4>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(row['Status Desa'])}">
+                        <i class="fa-solid ${getStatusIcon(row['Status Desa'])}"></i>
+                        ${row['Status Desa']}
+                    </span>
+                </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-slate-100">
+                <p class="text-xs text-slate-500 mb-1">Skor Total IDM</p>
+                <div class="flex items-baseline gap-2">
+                    <p class="text-3xl font-extrabold text-slate-900">${formatSkor(row.Skor)}</p>
+                    <i class="fa-solid fa-chart-line text-emerald-500 text-sm"></i>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    // Store data for modal access
+    window.cardData = data;
+}
+
+function showDetail(idx) {
+    const data = window.cardData[idx];
+    if (!data) return;
+    
+    const modal = document.getElementById('detailModal');
+    const header = document.getElementById('modalHeader');
+    const desaName = document.getElementById('modalDesaName');
+    const statusBadge = document.getElementById('modalStatusBadge');
+    const tahun = document.getElementById('modalTahun');
+    const skor = document.getElementById('modalSkor');
+    const dimensiContainer = document.getElementById('modalDimensi');
+    
+    header.className = `p-5 md:p-6 text-white ${getStatusGradient(data['Status Desa'])}`;
+    desaName.textContent = data.Desa;
+    statusBadge.innerHTML = `<i class="fa-solid ${getStatusIcon(data['Status Desa'])} mr-1"></i>${data['Status Desa']}`;
+    tahun.textContent = `Tahun ${data.Tahun}`;
+    skor.textContent = formatSkor(data.Skor);
+    
+    const dimensi = [
+        { label: 'Layanan Dasar', value: data['Dimensi Layanan Dasar'], icon: 'fa-hospital', color: 'emerald' },
+        { label: 'Sosial', value: data['Dimensi Sosial'], icon: 'fa-users', color: 'blue' },
+        { label: 'Ekonomi', value: data['Dimensi Ekonomi'], icon: 'fa-coins', color: 'amber' },
+        { label: 'Lingkungan', value: data['Dimensi Lingkungan'], icon: 'fa-leaf', color: 'green' },
+        { label: 'Aksesibilitas', value: data['Dimensi Aksesibilitas'], icon: 'fa-road', color: 'purple' },
+        { label: 'Tata Kelola Pemerintahan', value: data['Dimensi Tata Kelola Pemerintahan Desa'], icon: 'fa-landmark', color: 'indigo' }
+    ];
+    
+    dimensiContainer.innerHTML = dimensi.map(d => `
+        <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+            <div class="bg-${d.color}-100 p-2.5 rounded-lg flex-shrink-0">
+                <i class="fa-solid ${d.icon} text-${d.color}-600"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-xs text-slate-500 font-medium">${d.label}</p>
+                <p class="text-lg font-bold text-slate-900">${formatSkor(d.value)}</p>
+            </div>
+        </div>
+    `).join('');
+    
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+    document.getElementById('detailModal').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function updateBarChart(data) {
+    const ctx = document.getElementById('barChart');
+    const sortedData = [...data].sort((a, b) => parseFloat(b.Skor) - parseFloat(a.Skor));
+    
+    if (barChart) barChart.destroy();
+    
+    barChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: sortedData.map(d => d.Desa),
+            datasets: [{
+                label: 'Skor IDM',
+                data: sortedData.map(d => parseFloat(String(d.Skor).replace(',', '.'))),
+                backgroundColor: sortedData.map(d => getChartColor(d['Status Desa'])),
+                borderRadius: 6,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `Skor: ${sortedData[ctx.dataIndex].Skor} | ${sortedData[ctx.dataIndex]['Status Desa']}`
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { callback: v => v.toFixed(2) }
+                },
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45,
+                        font: { size: 10 }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateRadarChart(data, selectedDesa) {
+    const ctx = document.getElementById('radarChart');
+    
+    if (radarChart) radarChart.destroy();
+    
+    let dimensionsData, originalData, chartLabel, chartColor;
+    
+    if (selectedDesa === 'all' || data.length === 0) {
+        if (data.length === 0 && currentYearData.length > 0) {
+            data = currentYearData;
+        }
+        if (data.length === 0) {
+            dimensionsData = [0, 0, 0, 0, 0, 0];
+            originalData = [0, 0, 0, 0, 0, 0];
+        } else {
+            dimensionsData = [
+                data.reduce((sum, d) => sum + parseNum(d['Dimensi Layanan Dasar']), 0) / data.length,
+                data.reduce((sum, d) => sum + parseNum(d['Dimensi Sosial']), 0) / data.length,
+                data.reduce((sum, d) => sum + parseNum(d['Dimensi Ekonomi']), 0) / data.length,
+                data.reduce((sum, d) => sum + parseNum(d['Dimensi Lingkungan']), 0) / data.length,
+                data.reduce((sum, d) => sum + parseNum(d['Dimensi Aksesibilitas']), 0) / data.length,
+                data.reduce((sum, d) => sum + parseNum(d['Dimensi Tata Kelola Pemerintahan Desa']), 0) / data.length,
+            ];
+            originalData = [...dimensionsData];
+        }
+        chartLabel = 'Rata-rata Kecamatan';
+        chartColor = '#059669';
+    } else {
+        const desa = selectedDesaData || data[0];
+        originalData = [
+            parseNum(desa['Dimensi Layanan Dasar']),
+            parseNum(desa['Dimensi Sosial']),
+            parseNum(desa['Dimensi Ekonomi']),
+            parseNum(desa['Dimensi Lingkungan']),
+            parseNum(desa['Dimensi Aksesibilitas']),
+            parseNum(desa['Dimensi Tata Kelola Pemerintahan Desa'])
+        ];
+        chartLabel = desa.Desa;
+        chartColor = getChartColor(desa['Status Desa']);
+    }
+
+    const maxVal = Math.max(...originalData);
+    const shouldNormalize = maxVal > 10;
+    const normalizedData = shouldNormalize 
+        ? originalData.map(v => v / RADAR_NORMALIZED_MAX) 
+        : originalData;
+    
+    radarChart = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: ['Layanan Dasar', 'Sosial', 'Ekonomi', 'Lingkungan', 'Aksesibilitas', 'Tata Kelola'],
+            datasets: [{
+                label: chartLabel,
+                data: normalizedData,
+                backgroundColor: chartColor + '30',
+                borderColor: chartColor,
+                borderWidth: 2,
+                pointBackgroundColor: chartColor,
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: chartColor,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const idx = ctx.dataIndex;
+                            const originalVal = originalData[idx];
+                            return `${ctx.dataset.label}: ${originalVal.toFixed(2)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: shouldNormalize ? 1 : Math.max(...originalData) * 1.2,
+                    ticks: { 
+                        stepSize: shouldNormalize ? 0.2 : 20,
+                        callback: v => shouldNormalize ? v.toFixed(1) : Math.round(v)
+                    },
+                    pointLabels: {
+                        font: { size: 11, weight: '500' }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Close modal on ESC
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+});
+
+loadData();
+</script>
+<script>(function(){document.addEventListener("click",function(e){var a=e.target.closest("[data-product-id]");if(!a)return;e.preventDefault();var pid=a.getAttribute("data-product-id");if(pid)parent.postMessage({type:"ecto-artifact-link-click",productId:pid},"*")})})();</script>
+</body>
+</html>
